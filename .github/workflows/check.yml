@@ -14,18 +14,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # OXM OMC
-          - model: "SM-A528B"
-            region: "BTU"
           # ODM OMC
           - model: "SM-A528B"
             region: "INS"
-          # OLM OMC
+          # OJM OMC
           - model: "SM-A528B"
-            region: "XSA"
+            region: "EGY"
           # OKR OMC
           - model: "SM-A528N"
             region: "KOO"
+          # OLM OMC
+          - model: "SM-A528B"
+            region: "XSA"
+          # OWA OMC
+          - model: "SM-A528B"
+            region: "CDR"
+          # OWO OMC
+          - model: "SM-A528B"
+            region: "PEO"
+          # OXM OMC
+          - model: "SM-A528B"
+            region: "BTU"
 
     steps:
       - name: Checkout repo

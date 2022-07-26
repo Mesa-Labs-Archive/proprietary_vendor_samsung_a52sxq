@@ -3,7 +3,7 @@
 
 To [download](https://github.com/BlackMesa123/proprietary_vendor_samsung_a52sxq/releases) the correct binaries for your firmware, please refer to the following table by checking your current OMC sales code (ex. A528B**OXM**1CVE2):
 
-<img src="readme-res/omc-info.jpg" height="10%"/>
+<img src="readme-res/omc-info.jpg" width="40%"/>
 
 | OMC | CSC |
 | ------------- | ------------- |

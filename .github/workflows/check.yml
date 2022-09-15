@@ -26,12 +26,18 @@ jobs:
           # OKR OMC
           - model: "SM-A528N"
             region: "KOO"
+          # OLE OMC
+          - model: "SM-A528B"
+            region: "XID"
           # OLM OMC
           - model: "SM-A528B"
             region: "XSA"
           # OWA OMC
           - model: "SM-A528B"
             region: "CDR"
+          # OWM OMC
+          - model: "SM-A528B"
+            region: "TGP"
           # OWO OMC
           - model: "SM-A528B"
             region: "PEO"

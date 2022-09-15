@@ -6,13 +6,15 @@ To [download](https://github.com/BlackMesa123/proprietary_vendor_samsung_a52sxq/
 <img src="readme-res/omc-info.jpg" width="40%"/>
 
 | OMC | CSC |
-| ------------- | ------------- |
+| --- | --- |
 | BRI | BRI |
 | ODM | INS |
 | OJM | EGY |
 | OKR | KOO |
+| OLE | XID |
 | OLM | XSA |
 | OWA | CDR |
+| OWM | TGP |
 | OWO | PEO |
 | OXM | BTU |
 

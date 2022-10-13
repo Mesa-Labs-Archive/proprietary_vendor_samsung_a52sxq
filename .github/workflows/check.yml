@@ -47,12 +47,11 @@ jobs:
 
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           submodules: true
 
       - name: Compare latest version with current version
-        id: check
         run: |
           need_update=0
           latest=`curl --retry 5 --retry-delay 5 http://fota-cloud-dn.ospserver.net/firmware/${{ matrix.region }}/${{ matrix.model }}/version.xml | grep latest | sed 's/^[^>]*>//' | sed 's/<.*//'`
@@ -61,14 +60,14 @@ jobs:
           latest_modem=`echo $latest | cut -d'/' -f3`
           current=`cat current.${{ matrix.model }}_${{ matrix.region }}` || need_update=1
           [[ $latest != $current ]] && need_update=1
-          echo ::set-output name=latest_version::$latest
-          echo ::set-output name=latest_shortversion::$latest_short
-          echo ::set-output name=latest_cscversion::$latest_csc
-          echo ::set-output name=latest_modemversion::$latest_modem
-          echo ::set-output name=need_update::$need_update
+          echo "latest_version=$latest" >> $GITHUB_ENV
+          echo "latest_shortversion=$latest_short" >> $GITHUB_ENV
+          echo "latest_cscversion=$latest_csc" >> $GITHUB_ENV
+          echo "latest_modemversion=$latest_modem" >> $GITHUB_ENV
+          echo "need_update=$need_update" >> $GITHUB_ENV
 
       - name: Install dependencies
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           sudo apt-get update
           sudo apt-get install -y liblz4-tool zip simg2img f2fs-tools
@@ -76,34 +75,33 @@ jobs:
           sudo wget -O /usr/bin/lpunpack https://corsica.nu/lpunpack && sudo chmod +x /usr/bin/lpunpack
 
       - name: Fetch firmware
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: samfirm -m ${{ matrix.model }} -r ${{ matrix.region }}
 
       - name: Get path of files
-        if: steps.check.outputs.need_update == 1
-        id: files
+        if: env.need_update == 1
         run: |
-          echo ::set-output name=ap::`find -name AP*`
-          echo ::set-output name=bl::`find -name BL*`
-          echo ::set-output name=cp::`find -name CP*`
-          echo ::set-output name=csc::`find -name CSC*`
-          echo ::set-output name=home_csc::`find -name HOME_CSC*`
+          echo "ap_tar=`find -name AP*`" >> $GITHUB_ENV
+          echo "bl_tar=`find -name BL*`" >> $GITHUB_ENV
+          echo "cp_tar=`find -name CP*`" >> $GITHUB_ENV
+          echo "csc_tar=`find -name CSC*`" >> $GITHUB_ENV
+          echo "home_csc_tar=`find -name HOME_CSC*`" >> $GITHUB_ENV
 
       - name: Check downloaded firmware version
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
-          version_short=`echo ${{ steps.files.outputs.ap }} | cut -d'_' -f3`
-          version_csc=`echo ${{ steps.files.outputs.csc }} | cut -d'_' -f4`
-          version_modem=`echo ${{ steps.files.outputs.cp }} | cut -d'_' -f3`
-          [[ $version_short == ${{ steps.check.outputs.latest_shortversion }} ]]
-          [[ $version_csc == ${{ steps.check.outputs.latest_cscversion }} ]]
-          [[ $version_modem == ${{ steps.check.outputs.latest_modemversion }} ]]
+          version_short=`echo ${{ env.ap_tar }} | cut -d'_' -f3`
+          version_csc=`echo ${{ env.csc_tar }} | cut -d'_' -f4`
+          version_modem=`echo ${{ env.cp_tar }} | cut -d'_' -f3`
+          [[ $version_short == ${{ env.latest_shortversion }} ]]
+          [[ $version_csc == ${{ env.latest_cscversion }} ]]
+          [[ $version_modem == ${{ env.latest_modemversion }} ]]
           echo PDA version: $version_short > versions.txt
           echo CSC version: $version_csc >> versions.txt
           echo Modem version: $version_modem >> versions.txt
 
       - name: Cleanup space
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           sudo apt-get remove --purge -y "php*" "dotnet*" "mysql*" "nodejs*" "clang*" "google*"
           sudo apt-get autoremove -y
@@ -111,35 +109,34 @@ jobs:
           sudo rm -rf /usr/local
 
       - name: Extract kernel images
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         env:
           FILES: boot.img.lz4 dtbo.img.lz4 vbmeta.img.lz4 vendor_boot.img.lz4
         run: |
-          for file in $FILES; do tar xvf ${{ steps.files.outputs.ap }} ${file}; done
-          tar cvf ${{ steps.check.outputs.latest_shortversion }}_kernel.tar *.lz4
+          for file in $FILES; do tar xvf ${{ env.ap_tar }} ${file}; done
+          tar cvf ${{ env.latest_shortversion }}_kernel.tar *.lz4
           rm *.lz4
 
       - name: Extract PIT file
-        if: steps.check.outputs.need_update == 1
-        id: pit
+        if: env.need_update == 1
         run: |
-          tar --wildcards --exclude='*/*' -xvf ${{ steps.files.outputs.csc }} '*.pit'
-          echo ::set-output name=file::`find -name *.pit`
+          tar --wildcards --exclude='*/*' -xvf ${{ env.csc_tar }} '*.pit'
+          echo "pit_file=`find -name *.pit`" >> $GITHUB_ENV
 
       - name: Generate patched vbmeta
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
-          tar xvf ${{ steps.files.outputs.ap }} vbmeta.img.lz4
+          tar xvf ${{ env.ap_tar }} vbmeta.img.lz4
           lz4 -d vbmeta.img.lz4 vbmeta.img
           rm vbmeta.img.lz4
           printf "$(printf '\\x%02X' 3)" | dd of="vbmeta.img" bs=1 seek=123 count=1 conv=notrunc &> /dev/null
-          tar cvf ${{ steps.check.outputs.latest_shortversion }}_patched_vbmeta.tar vbmeta.img
+          tar cvf ${{ env.latest_shortversion }}_patched_vbmeta.tar vbmeta.img
           rm vbmeta.img
 
       - name: Extract vendor partition
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
-          tar xvf ${{ steps.files.outputs.ap }} super.img.lz4
+          tar xvf ${{ env.ap_tar }} super.img.lz4
           lz4 -d super.img.lz4 super.img
           rm super.img.lz4
           simg2img super.img super_raw.img
@@ -148,41 +145,41 @@ jobs:
           lpunpack --partition=vendor super.img
           rm super.img
           [[ -e vendor.img.ext4 ]] && mv vendor.img.ext4 vendor.img
-          [[ -e vendor.img ]] && zip ${{ steps.check.outputs.latest_shortversion }}_vendor.zip vendor.img
+          [[ -e vendor.img ]] && zip ${{ env.latest_shortversion }}_vendor.zip vendor.img
           [[ -e vendor.img ]] && rm vendor.img
 
       - name: Update current version
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         run: |
           git config --local user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
           git pull origin ${{github.ref}} --ff-only
-          echo ${{ steps.check.outputs.latest_version }} > current.${{ matrix.model }}_${{ matrix.region }}
+          echo ${{ env.latest_version }} > current.${{ matrix.model }}_${{ matrix.region }}
           git add current.${{ matrix.model }}_${{ matrix.region }}
-          git commit -m "${{ matrix.model }}: ${{ steps.check.outputs.latest_version }}"
-          git tag "${{ steps.check.outputs.latest_shortversion }}_${{ matrix.region }}"
+          git commit -m "${{ matrix.model }}: ${{ env.latest_version }}"
+          git tag "${{ env.latest_shortversion }}_${{ matrix.region }}"
 
       - name: Push changes to repo
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         uses: ad-m/github-push-action@master
         with:
           tags: true
           github_token: ${{ secrets.TOKEN }}
 
       - name: Upload release assets
-        if: steps.check.outputs.need_update == 1
+        if: env.need_update == 1
         uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.TOKEN }}
         with:
           body_path: versions.txt
-          tag_name: "${{ steps.check.outputs.latest_shortversion }}_${{ matrix.region }}"
-          name: "${{ steps.check.outputs.latest_shortversion }} - ${{ matrix.model }} - ${{ matrix.region }}"
+          tag_name: "${{ env.latest_shortversion }}_${{ matrix.region }}"
+          name: "${{ env.latest_shortversion }} - ${{ matrix.model }} - ${{ matrix.region }}"
           files: |
-            ${{ steps.files.outputs.bl }}
-            ${{ steps.files.outputs.cp }}
-            ${{ steps.files.outputs.home_csc }}
-            ${{ steps.check.outputs.latest_shortversion }}_kernel.tar
-            ${{ steps.pit.outputs.file }}
-            ${{ steps.check.outputs.latest_shortversion }}_patched_vbmeta.tar
-            ${{ steps.check.outputs.latest_shortversion }}_vendor.zip
+            ${{ env.bl_tar }}
+            ${{ env.cp_tar }}
+            ${{ env.home_csc_tar }}
+            ${{ env.latest_shortversion }}_kernel.tar
+            ${{ env.pit_file }}
+            ${{ env.latest_shortversion }}_patched_vbmeta.tar
+            ${{ env.latest_shortversion }}_vendor.zip

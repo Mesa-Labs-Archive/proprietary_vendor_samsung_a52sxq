@@ -66,12 +66,18 @@ jobs:
           echo "latest_modemversion=$latest_modem" >> $GITHUB_ENV
           echo "need_update=$need_update" >> $GITHUB_ENV
 
+      - name: Set up Node.js
+        if: env.need_update == 1
+        uses: actions/setup-node@v3
+        with:
+          node-version: 'latest'
+
       - name: Install dependencies
         if: env.need_update == 1
         run: |
           sudo apt-get update
           sudo apt-get install -y liblz4-tool zip simg2img f2fs-tools
-          sudo wget -O /usr/bin/samfirm https://github.com/jesec/SamFirm.NET/releases/latest/download/linux-x64 && sudo chmod +x /usr/bin/samfirm
+          sudo npm i -g samfirm
           sudo wget -O /usr/bin/lpunpack https://corsica.nu/lpunpack && sudo chmod +x /usr/bin/lpunpack
 
       - name: Fetch firmware

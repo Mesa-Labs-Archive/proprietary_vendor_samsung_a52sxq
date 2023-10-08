@@ -83,7 +83,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y liblz4-tool zip simg2img f2fs-tools
-          sudo npm i -g samfirm
+          sudo wget -O /usr/bin/samfirm https://github.com/DavidArsene/samfirm.js/releases/download/v0.3.0/samfirm.js && sudo chmod +x /usr/bin/samfirm
 
       - name: Fetch firmware
         if: env.need_update == 1
